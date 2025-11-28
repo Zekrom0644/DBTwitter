@@ -12,7 +12,7 @@ public class TwitterService {
     // TODO: 본인의 DB 환경에 맞게 수정하세요.
     private static final String DB_URL = "jdbc:mysql://localhost:3306/twitter_db?serverTimezone=UTC";
     private static final String DB_USER = "root";     // 아이디
-    private static final String DB_PW   = "1212";     // 비밀번호 (설정하신 비번으로)
+    private static final String DB_PW   = "1212";     // 비밀번호
 
     public TwitterService() {
         try {
@@ -63,7 +63,6 @@ public class TwitterService {
         }
     }
 
-    // [New] 비밀번호 변경 기능
     public boolean changePassword(String userId, String newPwd) {
         String sql = "UPDATE users SET pwd = ? WHERE id = ?";
         try (Connection conn = getConnection();
@@ -97,7 +96,6 @@ public class TwitterService {
         }
     }
 
-    // [New] 게시글 삭제 기능
     public boolean deletePost(String postId) {
         String sql = "DELETE FROM posts WHERE post_id = ?";
         try (Connection conn = getConnection();
@@ -112,10 +110,9 @@ public class TwitterService {
         }
     }
 
-    // [Update] 타임라인: 나 + 내가 팔로우한 사람의 글만 최신순 조회
     public List<Post> getTimeline(String userId) {
         List<Post> list = new ArrayList<>();
-        
+        // 나 + 내가 팔로우한 사람의 글만 최신순 조회
         String sql = "SELECT * FROM posts " +
                      "WHERE writer_id = ? " +
                      "OR writer_id IN (SELECT target_id FROM follows WHERE follower_id = ?) " +
@@ -148,8 +145,6 @@ public class TwitterService {
     /* ==================================================
      * 3. 게시글 좋아요 / 싫어요 (토글 방식)
      * ================================================== */
-    
-    // 헬퍼 메서드: 이미 반응했는지 확인
     private boolean hasPostReacted(String postId, String userId, boolean isLike) {
         String sql = "SELECT 1 FROM likes WHERE post_id = ? AND user_id = ? AND is_like = ?";
         try (Connection conn = getConnection();
@@ -173,23 +168,18 @@ public class TwitterService {
         return togglePostReaction(postId, userId, false);
     }
 
-    // 좋아요/싫어요 로직 통합 메서드
     private boolean togglePostReaction(String postId, String userId, boolean isLike) {
         boolean exists = hasPostReacted(postId, userId, isLike);
         
         String deleteSql = "DELETE FROM likes WHERE post_id=? AND user_id=? AND is_like=?";
         String insertSql = "INSERT INTO likes (post_id, user_id, is_like) VALUES (?, ?, ?)";
-        
-        // 카운트 컬럼 결정
         String col = isLike ? "num_likes" : "num_dislikes";
         
-        // 이미 있으면 취소(-1), 없으면 추가(+1)
         String updatePostSql = exists 
                 ? "UPDATE posts SET " + col + " = " + col + " - 1 WHERE post_id = ?" 
                 : "UPDATE posts SET " + col + " = " + col + " + 1 WHERE post_id = ?";
 
         try (Connection conn = getConnection()) {
-            // 1. likes 테이블 처리
             if (exists) {
                 try (PreparedStatement pstmt = conn.prepareStatement(deleteSql)) {
                     pstmt.setInt(1, Integer.parseInt(postId));
@@ -205,15 +195,11 @@ public class TwitterService {
                     pstmt.executeUpdate();
                 }
             }
-            
-            // 2. posts 테이블 카운트 업데이트
             try (PreparedStatement pstmt = conn.prepareStatement(updatePostSql)) {
                 pstmt.setInt(1, Integer.parseInt(postId));
                 pstmt.executeUpdate();
             }
-            
-            return !exists; // true: 추가됨, false: 취소됨
-            
+            return !exists; 
         } catch (Exception e) {
             e.printStackTrace();
             return false;
@@ -221,8 +207,10 @@ public class TwitterService {
     }
 
     /* ==================================================
-     * 4. 팔로우 / 팔로잉
+     * 4. 팔로우 / 팔로잉 (Follow)
      * ================================================== */
+    
+    // [New] 나를 팔로우하는 사람(Followers) 목록
     public List<User> getFollowers(String userId) {
         List<User> list = new ArrayList<>();
         String sql = "SELECT u.id FROM users u " +
@@ -244,6 +232,7 @@ public class TwitterService {
         return list;
     }
 
+    // [New] 팔로우 여부 확인
     public boolean isFollowing(String me, String target) {
         String sql = "SELECT 1 FROM follows WHERE follower_id = ? AND target_id = ?";
         try (Connection conn = getConnection();
@@ -259,27 +248,31 @@ public class TwitterService {
         }
     }
 
-    public void follow(String me, String target) {
+    // [New] 팔로우 하기
+    public boolean follow(String me, String target) {
         String sql = "INSERT INTO follows (follower_id, target_id) VALUES (?, ?)";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, me);
             pstmt.setString(2, target);
-            pstmt.executeUpdate();
+            return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
+            return false;
         }
     }
 
-    public void unfollow(String me, String target) {
+    // [New] 언팔로우 하기
+    public boolean unfollow(String me, String target) {
         String sql = "DELETE FROM follows WHERE follower_id = ? AND target_id = ?";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, me);
             pstmt.setString(2, target);
-            pstmt.executeUpdate();
+            return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
+            return false;
         }
     }
 
@@ -301,13 +294,11 @@ public class TwitterService {
                     String cId = String.valueOf(rs.getInt("comment_id"));
                     String wId = rs.getString("writer_id");
                     String content = rs.getString("content");
-                    int nLikes = rs.getInt("num_likes"); // DB 컬럼이 추가되어야 함
+                    int nLikes = rs.getInt("num_likes"); 
                     
-                    // Comment 모델 생성자에 맞춰 데이터 주입
                     Comment c = new Comment(wId, content);
                     c.setCommentId(cId);
                     c.setNumLikes(nLikes);
-                    
                     list.add(c);
                 }
             }
@@ -326,40 +317,26 @@ public class TwitterService {
             pstmt.setInt(1, pid);
             pstmt.setString(2, writerId);
             pstmt.setString(3, content);
-            
             pstmt.executeUpdate();
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    // [New] 댓글 좋아요 토글 기능
     public boolean toggleCommentLike(String commentId, String userId) {
-        // 1. 이미 좋아요 눌렀는지 확인
         String checkSql = "SELECT 1 FROM comment_likes WHERE comment_id=? AND user_id=?";
         boolean exists = false;
-        
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(checkSql)) {
             pstmt.setInt(1, Integer.parseInt(commentId));
             pstmt.setString(2, userId);
-            try (ResultSet rs = pstmt.executeQuery()) {
-                exists = rs.next();
-            }
+            try (ResultSet rs = pstmt.executeQuery()) { exists = rs.next(); }
         } catch (Exception e) { return false; }
 
-        String sqlExec;
-        String sqlUpdate;
-
-        if (exists) {
-            // 취소
-            sqlExec = "DELETE FROM comment_likes WHERE comment_id=? AND user_id=?";
-            sqlUpdate = "UPDATE comments SET num_likes = num_likes - 1 WHERE comment_id=?";
-        } else {
-            // 추가
-            sqlExec = "INSERT INTO comment_likes (comment_id, user_id) VALUES (?, ?)";
-            sqlUpdate = "UPDATE comments SET num_likes = num_likes + 1 WHERE comment_id=?";
-        }
+        String sqlExec = exists ? "DELETE FROM comment_likes WHERE comment_id=? AND user_id=?" 
+                                : "INSERT INTO comment_likes (comment_id, user_id) VALUES (?, ?)";
+        String sqlUpdate = exists ? "UPDATE comments SET num_likes = num_likes - 1 WHERE comment_id=?" 
+                                  : "UPDATE comments SET num_likes = num_likes + 1 WHERE comment_id=?";
 
         try (Connection conn = getConnection()) {
             try (PreparedStatement pstmt = conn.prepareStatement(sqlExec)) {
@@ -371,10 +348,38 @@ public class TwitterService {
                 pstmt.setInt(1, Integer.parseInt(commentId));
                 pstmt.executeUpdate();
             }
-            return !exists; // true: 증가, false: 감소
+            return !exists;
         } catch (Exception e) {
             e.printStackTrace();
             return false;
         }
+    }
+    
+ // TwitterService.java 맨 아래에 추가
+
+    // [New] 추천 친구 목록 (나 자신 제외, 이미 팔로우한 사람 제외)
+    public List<User> getRecommendations(String userId) {
+        List<User> list = new ArrayList<>();
+        
+        // 로직: 전체 유저 중 (내 아이디 아님) AND (내 팔로우 목록에 없음)
+        String sql = "SELECT id FROM users " +
+                     "WHERE id != ? " +
+                     "AND id NOT IN (SELECT target_id FROM follows WHERE follower_id = ?)";
+        
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setString(1, userId);
+            pstmt.setString(2, userId);
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    list.add(new User(rs.getString("id")));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
     }
 }
