@@ -14,18 +14,20 @@ public class MainFrame extends JFrame {
     private final TwitterService service;
     private final String userId;
 
-    /* CardLayout 패널 이름 상수 */
     private final JPanel contentPanel = new JPanel(new CardLayout());
     private final String CARD_HOME = "HOME";
-    private final String CARD_EXPLORE = "EXPLORE"; // ★ 추가됨
+    private final String CARD_EXPLORE = "EXPLORE";
     private final String CARD_FOLLOWERS = "FOLLOWERS";
+    private final String CARD_FOLLOWING = "FOLLOWING"; // ★ 추가
     private final String CARD_DETAIL = "DETAIL";
+    private final String CARD_PROFILE = "PROFILE";
 
-    /* 화면 패널들 */
     private JPanel timelinePanel;
-    private JPanel explorePanel;   // ★ 추가됨
+    private JPanel explorePanel;
     private JPanel followersPanel;
+    private JPanel followingPanel; // ★ 추가
     private JPanel postDetailWrapper;
+    private JPanel profilePanel;
 
     public MainFrame(TwitterService service, String userId) {
         this.service = service;
@@ -43,65 +45,51 @@ public class MainFrame extends JFrame {
         showHome();
     }
 
-    /* ======================================================
-     * Sidebar (메뉴)
-     * ====================================================== */
     private void initSidebar() {
-
         JPanel side = new JPanel();
         side.setLayout(new BoxLayout(side, BoxLayout.Y_AXIS));
         side.setBackground(Color.WHITE);
         side.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(230, 236, 240)));
         side.setPreferredSize(new Dimension(160, getHeight()));
 
-        // 로고
-        JLabel logo = new JLabel();
+        JLabel logo = new JLabel("Twitter");
+        logo.setFont(new Font("Segoe UI", Font.BOLD, 20));
         logo.setAlignmentX(Component.CENTER_ALIGNMENT);
-        java.net.URL imgUrl = getClass().getResource("/logo_twitter_48.png");
-        if (imgUrl != null) {
-            ImageIcon icon = new ImageIcon(imgUrl);
+        try {
+            ImageIcon icon = new ImageIcon(getClass().getResource("/logo_twitter_48.png"));
             Image scaled = icon.getImage().getScaledInstance(48, 48, Image.SCALE_SMOOTH);
             logo.setIcon(new ImageIcon(scaled));
-        } else {
-            logo.setText("Twitter");
-            logo.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        }
+            logo.setText("");
+        } catch (Exception e) {}
 
         side.add(Box.createVerticalStrut(25));
         side.add(logo);
         side.add(Box.createVerticalStrut(25));
 
-        // [메뉴 버튼들]
         side.add(createMenuButton("Home", e -> showHome()));
         side.add(Box.createVerticalStrut(15));
-        
-        // ★ [New] Explore (추천 친구) 버튼 추가
         side.add(createMenuButton("Explore", e -> showExplore()));
         side.add(Box.createVerticalStrut(15));
-        
         side.add(createMenuButton("Followers", e -> showFollowers()));
         side.add(Box.createVerticalStrut(15));
-
-        // 비밀번호 변경
-        side.add(createMenuButton("Password", e -> {
-            new ChangePasswordDialog(this, service, userId).setVisible(true);
-        }));
+        // ★ [New] Following 버튼 추가
+        side.add(createMenuButton("Following", e -> showFollowing()));
+        side.add(Box.createVerticalStrut(15));
+        side.add(createMenuButton("My Profile", e -> showUserProfile(userId)));
 
         side.add(Box.createVerticalGlue());
 
-        // 로그아웃
+        side.add(createMenuButton("Password", e -> new ChangePasswordDialog(this, service, userId).setVisible(true)));
+        side.add(Box.createVerticalStrut(15));
+        
         JButton logoutBtn = new JButton("Logout");
         logoutBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
         logoutBtn.setBackground(new Color(220, 53, 69));
         logoutBtn.setForeground(Color.WHITE);
-        logoutBtn.setPreferredSize(new Dimension(120, 40));
-        logoutBtn.setMaximumSize(new Dimension(120, 40));
-        logoutBtn.putClientProperty("JButton.buttonType", "roundRect");
-        logoutBtn.addActionListener(e -> logout());
-
+        logoutBtn.addActionListener(e -> { dispose(); new LoginFrame(service).setVisible(true); });
+        
         side.add(logoutBtn);
         side.add(Box.createVerticalStrut(25));
-
         add(side, BorderLayout.WEST);
     }
 
@@ -109,125 +97,126 @@ public class MainFrame extends JFrame {
         JButton btn = new JButton(text);
         btn.setAlignmentX(Component.CENTER_ALIGNMENT);
         btn.setMaximumSize(new Dimension(140, 36));
-        btn.setHorizontalAlignment(SwingConstants.LEFT);
         btn.setBackground(Color.WHITE);
         btn.setFocusPainted(false);
-        btn.setBorder(BorderFactory.createEmptyBorder(5, 15, 5, 5));
         btn.addActionListener(listener);
         return btn;
     }
 
-    /* ======================================================
-     * Content Panels 초기화
-     * ====================================================== */
     private void initContentPanels() {
-
-        // 1. HOME 화면
+        // HOME
         JPanel homePanel = new JPanel(new BorderLayout());
         homePanel.setBackground(Color.WHITE);
-
         JPanel header = new JPanel(new BorderLayout());
         header.setBackground(Color.WHITE);
         header.setBorder(BorderFactory.createEmptyBorder(20, 40, 15, 40));
-
         JLabel title = new JLabel("Home");
         title.setFont(new Font("Segoe UI", Font.BOLD, 28));
-        header.add(title, BorderLayout.WEST);
-
         JButton tweetBtn = new JButton("Tweet");
-        tweetBtn.setPreferredSize(new Dimension(110, 40));
         tweetBtn.setBackground(new Color(29, 161, 242));
         tweetBtn.setForeground(Color.WHITE);
-        tweetBtn.putClientProperty("JButton.buttonType", "roundRect");
-        tweetBtn.addActionListener(e -> openWritePostDialog());
+        tweetBtn.addActionListener(e -> { new WritePostDialog(this, service, userId).setVisible(true); loadTimeline(); });
+        header.add(title, BorderLayout.WEST);
         header.add(tweetBtn, BorderLayout.EAST);
         homePanel.add(header, BorderLayout.NORTH);
 
         timelinePanel = new JPanel();
         timelinePanel.setLayout(new BoxLayout(timelinePanel, BoxLayout.Y_AXIS));
-        timelinePanel.setBackground(Color.WHITE);
-        JScrollPane scroll = new JScrollPane(timelinePanel);
-        scroll.setBorder(BorderFactory.createEmptyBorder());
-        scroll.getVerticalScrollBar().setUnitIncrement(16);
-        homePanel.add(scroll, BorderLayout.CENTER);
-
-        // Refresh 버튼
-        JPanel bottom = new JPanel();
-        bottom.setBackground(Color.WHITE);
-        bottom.setBorder(BorderFactory.createEmptyBorder(10, 10, 25, 10));
+        homePanel.add(new JScrollPane(timelinePanel), BorderLayout.CENTER);
+        
         JButton refreshBtn = new JButton("Refresh");
-        refreshBtn.setPreferredSize(new Dimension(120, 38));
         refreshBtn.addActionListener(e -> loadTimeline());
-        bottom.add(refreshBtn);
-        homePanel.add(bottom, BorderLayout.SOUTH);
-
+        homePanel.add(refreshBtn, BorderLayout.SOUTH);
         contentPanel.add(homePanel, CARD_HOME);
 
-        // 2. EXPLORE 화면 (★ 추가됨)
+        // EXPLORE
         explorePanel = new JPanel(new BorderLayout());
         explorePanel.setBackground(Color.WHITE);
         contentPanel.add(explorePanel, CARD_EXPLORE);
 
-        // 3. FOLLOWERS 화면
+        // FOLLOWERS
         followersPanel = new JPanel(new BorderLayout());
         followersPanel.setBackground(Color.WHITE);
         contentPanel.add(followersPanel, CARD_FOLLOWERS);
 
-        // 4. DETAIL 화면
+        // FOLLOWING (★ 추가)
+        followingPanel = new JPanel(new BorderLayout());
+        followingPanel.setBackground(Color.WHITE);
+        contentPanel.add(followingPanel, CARD_FOLLOWING);
+
+        // DETAIL
         postDetailWrapper = new JPanel(new BorderLayout());
-        postDetailWrapper.setBackground(Color.WHITE);
         contentPanel.add(postDetailWrapper, CARD_DETAIL);
+
+        // PROFILE
+        profilePanel = new JPanel(new BorderLayout());
+        profilePanel.setBackground(Color.WHITE);
+        contentPanel.add(profilePanel, CARD_PROFILE);
     }
 
-    /* ======================================================
-     * 화면 전환 메서드
-     * ====================================================== */
     private void showHome() {
         ((CardLayout) contentPanel.getLayout()).show(contentPanel, CARD_HOME);
         loadTimeline();
     }
 
-    // ★ [New] Explore 화면 로직 (추천 친구)
     private void showExplore() {
         ((CardLayout) contentPanel.getLayout()).show(contentPanel, CARD_EXPLORE);
         explorePanel.removeAll();
 
-        JLabel title = new JLabel("Who to follow");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 22));
-        title.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
-        explorePanel.add(title, BorderLayout.NORTH);
+        JPanel searchBox = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        searchBox.setBackground(Color.WHITE);
+        JTextField txtSearch = new JTextField(20);
+        JButton btnSearch = new JButton("Search");
+        searchBox.add(new JLabel("Search:"));
+        searchBox.add(txtSearch);
+        searchBox.add(btnSearch);
+        explorePanel.add(searchBox, BorderLayout.NORTH);
 
-        JPanel list = new JPanel();
-        list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
-        list.setBackground(Color.WHITE);
+        JPanel resultPanel = new JPanel();
+        resultPanel.setLayout(new BoxLayout(resultPanel, BoxLayout.Y_AXIS));
+        explorePanel.add(new JScrollPane(resultPanel), BorderLayout.CENTER);
 
-        // 서비스에서 추천 목록 가져오기
-        List<User> recommendations = service.getRecommendations(userId);
-
-        if (recommendations.isEmpty()) {
-            JLabel msg = new JLabel("No new users to follow.");
-            msg.setBorder(BorderFactory.createEmptyBorder(20, 20, 0, 0));
-            list.add(msg);
-        } else {
-            for (User u : recommendations) {
-                // FollowersCardPanel을 재사용 (Follow 버튼이 파란색으로 뜰 것임)
-                list.add(new FollowersCardPanel(service, userId, u, null));
+        btnSearch.addActionListener(e -> {
+            String keyword = txtSearch.getText().trim();
+            resultPanel.removeAll();
+            if (keyword.isEmpty()) {
+                JLabel sub = new JLabel("  Who to follow");
+                sub.setFont(new Font("Segoe UI", Font.BOLD, 18));
+                resultPanel.add(sub);
+                List<User> recs = service.getRecommendations(userId);
+                // ★ 수정: 프로필 이동 콜백 추가
+                for(User u : recs) resultPanel.add(new FollowersCardPanel(service, userId, u, null, this::showUserProfile));
+            } else {
+                List<User> users = service.searchUsers(keyword);
+                if (!users.isEmpty()) {
+                    JLabel sub = new JLabel("  Users matching '" + keyword + "'");
+                    sub.setFont(new Font("Segoe UI", Font.BOLD, 18));
+                    resultPanel.add(sub);
+                    // ★ 수정: 프로필 이동 콜백 추가
+                    for(User u : users) resultPanel.add(new FollowersCardPanel(service, userId, u, null, this::showUserProfile));
+                    resultPanel.add(Box.createVerticalStrut(20));
+                }
+                List<Post> posts = service.searchPosts(keyword);
+                if (!posts.isEmpty()) {
+                    JLabel sub = new JLabel("  Posts matching '" + keyword + "'");
+                    sub.setFont(new Font("Segoe UI", Font.BOLD, 18));
+                    resultPanel.add(sub);
+                    for(Post p : posts) {
+                        resultPanel.add(new TweetCardPanel(service, p, userId, null, () -> showPostDetail(p), this::showUserProfile));
+                    }
+                }
+                if(users.isEmpty() && posts.isEmpty()) resultPanel.add(new JLabel("  No results found."));
             }
-        }
-
-        JScrollPane scroll = new JScrollPane(list);
-        scroll.setBorder(BorderFactory.createEmptyBorder());
-        explorePanel.add(scroll, BorderLayout.CENTER);
-        
-        explorePanel.revalidate();
-        explorePanel.repaint();
+            resultPanel.revalidate();
+            resultPanel.repaint();
+        });
+        btnSearch.doClick();
     }
 
     private void showFollowers() {
         ((CardLayout) contentPanel.getLayout()).show(contentPanel, CARD_FOLLOWERS);
         followersPanel.removeAll();
-
-        JLabel fTitle = new JLabel("Followers"); // 나를 팔로우하는 사람
+        JLabel fTitle = new JLabel("Followers");
         fTitle.setFont(new Font("Segoe UI", Font.BOLD, 22));
         fTitle.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
         followersPanel.add(fTitle, BorderLayout.NORTH);
@@ -235,51 +224,103 @@ public class MainFrame extends JFrame {
         JPanel list = new JPanel();
         list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
         list.setBackground(Color.WHITE);
-
         List<User> followers = service.getFollowers(userId);
-        
         if (followers.isEmpty()) {
-            JLabel noF = new JLabel("You have no followers yet.");
-            noF.setBorder(BorderFactory.createEmptyBorder(20, 20, 0, 0));
-            list.add(noF);
+            JLabel msg = new JLabel("You have no followers yet.");
+            msg.setBorder(BorderFactory.createEmptyBorder(20, 20, 0, 0));
+            list.add(msg);
         } else {
-            for (User targetUser : followers) {
-                list.add(new FollowersCardPanel(service, userId, targetUser, null));
+            for (User u : followers) {
+                // ★ 수정: 클릭 시 프로필로 이동
+                list.add(new FollowersCardPanel(service, userId, u, null, this::showUserProfile));
             }
         }
-
-        JScrollPane scroll = new JScrollPane(list);
-        scroll.setBorder(BorderFactory.createEmptyBorder());
-        followersPanel.add(scroll, BorderLayout.CENTER);
-
+        followersPanel.add(new JScrollPane(list), BorderLayout.CENTER);
         followersPanel.revalidate();
         followersPanel.repaint();
     }
 
-    /* ======================================================
-     * 기타 메서드 (Timeline, Logout 등)
-     * ====================================================== */
+    // ★ [New] 내가 팔로우하는 사람 목록 보기
+    private void showFollowing() {
+        ((CardLayout) contentPanel.getLayout()).show(contentPanel, CARD_FOLLOWING);
+        followingPanel.removeAll();
+        JLabel fTitle = new JLabel("Following");
+        fTitle.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        fTitle.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+        followingPanel.add(fTitle, BorderLayout.NORTH);
+
+        JPanel list = new JPanel();
+        list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
+        list.setBackground(Color.WHITE);
+        
+        // 서비스에서 목록 가져오기
+        List<User> following = service.getFollowing(userId);
+        
+        if (following.isEmpty()) {
+            JLabel msg = new JLabel("You are not following anyone yet.");
+            msg.setBorder(BorderFactory.createEmptyBorder(20, 20, 0, 0));
+            list.add(msg);
+        } else {
+            for (User u : following) {
+                // ★ 수정: 클릭 시 프로필로 이동
+                list.add(new FollowersCardPanel(service, userId, u, null, this::showUserProfile));
+            }
+        }
+        followingPanel.add(new JScrollPane(list), BorderLayout.CENTER);
+        followingPanel.revalidate();
+        followingPanel.repaint();
+    }
+
+    private void showUserProfile(String targetId) {
+        ((CardLayout) contentPanel.getLayout()).show(contentPanel, CARD_PROFILE);
+        profilePanel.removeAll();
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(Color.WHITE);
+        header.setBorder(BorderFactory.createEmptyBorder(20, 30, 20, 30));
+        JLabel lblTitle = new JLabel("@" + targetId + "'s Profile");
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        header.add(lblTitle, BorderLayout.WEST);
+
+        if (!targetId.equals(userId)) {
+            User targetUser = new User(targetId);
+            // 헤더의 팔로우 버튼은 클릭 시 프로필 이동 안 해도 됨 (null)
+            FollowersCardPanel followBtnPanel = new FollowersCardPanel(service, userId, targetUser, null, null);
+            header.add(followBtnPanel, BorderLayout.EAST);
+        }
+        profilePanel.add(header, BorderLayout.NORTH);
+
+        JPanel listPanel = new JPanel();
+        listPanel.setLayout(new BoxLayout(listPanel, BoxLayout.Y_AXIS));
+        List<Post> userPosts = service.getUserPosts(targetId);
+        if (userPosts.isEmpty()) {
+            listPanel.add(new JLabel("  No tweets yet."));
+        } else {
+            for (Post p : userPosts) {
+                listPanel.add(new TweetCardPanel(service, p, userId, 
+                        () -> showUserProfile(targetId), 
+                        () -> showPostDetail(p), 
+                        this::showUserProfile));
+            }
+        }
+        profilePanel.add(new JScrollPane(listPanel), BorderLayout.CENTER);
+        profilePanel.revalidate();
+        profilePanel.repaint();
+    }
+
     private void loadTimeline() {
         timelinePanel.removeAll();
         List<Post> posts = service.getTimeline(userId);
         for (Post p : posts) {
-            TweetCardPanel card = new TweetCardPanel(service, p, userId, this::refreshHome, () -> showPostDetail(p));
-            timelinePanel.add(card);
+            timelinePanel.add(new TweetCardPanel(service, p, userId, this::loadTimeline, () -> showPostDetail(p), this::showUserProfile));
         }
         timelinePanel.revalidate();
         timelinePanel.repaint();
     }
-
-    private void refreshHome() { loadTimeline(); }
-    private void openWritePostDialog() { new WritePostDialog(this, service, userId).setVisible(true); loadTimeline(); }
-    private void logout() { dispose(); new LoginFrame(service).setVisible(true); }
-
+    
     private void showPostDetail(Post post) {
         postDetailWrapper.removeAll();
-        PostDetailPanel detail = new PostDetailPanel(service, userId, post, this::showHome);
+        PostDetailPanel detail = new PostDetailPanel(service, userId, post, () -> showHome());
         postDetailWrapper.add(detail, BorderLayout.CENTER);
-        postDetailWrapper.revalidate();
-        postDetailWrapper.repaint();
         ((CardLayout) contentPanel.getLayout()).show(contentPanel, CARD_DETAIL);
     }
 }

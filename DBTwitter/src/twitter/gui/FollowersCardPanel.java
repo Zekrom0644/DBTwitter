@@ -5,15 +5,19 @@ import twitter.service.TwitterService;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.function.Consumer;
 
 public class FollowersCardPanel extends JPanel {
 
     private final TwitterService service;
-    private final String currentUserId; // 로그인한 나
-    private final String targetUserId;  // 카드에 표시된 사람
-    private final Runnable refreshAction; // (선택) 클릭 후 새로고침 동작
+    private final String currentUserId;
+    private final String targetUserId;
+    private final Runnable refreshAction;
 
-    public FollowersCardPanel(TwitterService service, String currentUserId, User targetUser, Runnable refreshAction) {
+    // ★ 수정됨: openProfile 콜백 추가
+    public FollowersCardPanel(TwitterService service, String currentUserId, User targetUser, Runnable refreshAction, Consumer<String> openProfile) {
         this.service = service;
         this.currentUserId = currentUserId;
         this.targetUserId = targetUser.getUserId();
@@ -22,44 +26,50 @@ public class FollowersCardPanel extends JPanel {
         setLayout(new BorderLayout());
         setBorder(BorderFactory.createMatteBorder(0,0,1,0,new Color(230,236,240)));
         setBackground(Color.WHITE);
-        setPreferredSize(new Dimension(0, 60)); // 높이 고정
+        setPreferredSize(new Dimension(0, 60));
 
-        // 1. 유저 아이디 표시
+        // 1. 유저 아이디 표시 (클릭 가능하게 설정)
         JLabel lblId = new JLabel("@" + targetUserId);
         lblId.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        
+        // ★ 프로필 이동 기능 추가
+        if (openProfile != null) {
+            lblId.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            lblId.setToolTipText("View Profile");
+            lblId.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    openProfile.accept(targetUserId);
+                }
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    lblId.setForeground(new Color(29, 161, 242)); // 파란색 하이라이트
+                }
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    lblId.setForeground(Color.BLACK);
+                }
+            });
+        }
 
         // 2. 팔로우/언팔로우 버튼
         JButton btn = new JButton();
         btn.setFocusPainted(false);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
         
-        // 내 자신이면 버튼 숨기기
         if (currentUserId.equals(targetUserId)) {
             btn.setVisible(false);
         } else {
-            // 초기 상태 확인 (이미 팔로우 중인가?)
             updateButtonState(btn);
         }
 
-        // 3. 버튼 클릭 이벤트
         btn.addActionListener(e -> {
             boolean isFollowing = service.isFollowing(currentUserId, targetUserId);
-
             if (isFollowing) {
-                // 이미 팔로우 중 -> 언팔로우 실행
-                if (service.unfollow(currentUserId, targetUserId)) {
-                    // 성공 시 버튼 상태 변경
-                    updateButtonUI(btn, false);
-                }
+                if (service.unfollow(currentUserId, targetUserId)) updateButtonUI(btn, false);
             } else {
-                // 팔로우 안 함 -> 팔로우 실행
-                if (service.follow(currentUserId, targetUserId)) {
-                    // 성공 시 버튼 상태 변경
-                    updateButtonUI(btn, true);
-                }
+                if (service.follow(currentUserId, targetUserId)) updateButtonUI(btn, true);
             }
-            
-            // 필요 시 부모 화면 새로고침 (예: 목록 갱신)
             if (refreshAction != null) refreshAction.run();
         });
 
@@ -75,21 +85,19 @@ public class FollowersCardPanel extends JPanel {
         add(right, BorderLayout.EAST);
     }
 
-    // DB 상태를 확인해서 버튼 모양 결정
     private void updateButtonState(JButton btn) {
         boolean isFollowing = service.isFollowing(currentUserId, targetUserId);
         updateButtonUI(btn, isFollowing);
     }
 
-    // 버튼 디자인 변경 (True: 팔로잉 중 / False: 팔로우 안 함)
     private void updateButtonUI(JButton btn, boolean isFollowing) {
         if (isFollowing) {
             btn.setText("Unfollow");
-            btn.setBackground(new Color(220, 53, 69)); // 빨간색 (언팔로우)
+            btn.setBackground(new Color(220, 53, 69));
             btn.setForeground(Color.WHITE);
         } else {
             btn.setText("Follow");
-            btn.setBackground(new Color(29, 161, 242)); // 파란색 (팔로우)
+            btn.setBackground(new Color(29, 161, 242));
             btn.setForeground(Color.WHITE);
         }
     }
