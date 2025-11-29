@@ -87,6 +87,7 @@ public class TweetCardPanel extends JPanel {
             btnDelete.setForeground(Color.RED);
             btnDelete.setBorderPainted(false);
             btnDelete.setContentAreaFilled(false);
+            btnDelete.putClientProperty("keepColor", true);
             btnDelete.addActionListener(e -> {
                 int ans = JOptionPane.showConfirmDialog(this, "Delete?", "Confirm", JOptionPane.YES_NO_OPTION);
                 if (ans == JOptionPane.YES_OPTION && service.deletePost(post.getPostId())) {

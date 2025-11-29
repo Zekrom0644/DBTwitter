@@ -129,7 +129,7 @@ public class PostDetailPanel extends JPanel {
             btnDelete.setFocusPainted(false);
             btnDelete.setBorderPainted(false);
             btnDelete.setContentAreaFilled(false);
-
+            btnDelete.putClientProperty("keepColor", true);
             btnDelete.addActionListener(e -> {
                 int answer = JOptionPane.showConfirmDialog(
                         this, "Delete this post?", "Confirm", JOptionPane.YES_NO_OPTION);
