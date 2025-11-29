@@ -43,6 +43,9 @@ public class MainFrame extends JFrame {
         initContentPanels();
         add(contentPanel, BorderLayout.CENTER);
         showHome();
+
+        // 처음 띄울 때 현재 모드(기본: Light)에 맞게 테마 적용
+        ThemeManager.applyTheme(getContentPane());
     }
 
     private void initSidebar() {
@@ -81,11 +84,28 @@ public class MainFrame extends JFrame {
 
         side.add(createMenuButton("Password", e -> new ChangePasswordDialog(this, service, userId).setVisible(true)));
         side.add(Box.createVerticalStrut(15));
+
+        // ★ 다크 모드 토글 버튼 추가
+        JButton darkBtn = new JButton(ThemeManager.isDark ? "Light Mode" : "Dark Mode");
+        darkBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        darkBtn.setMaximumSize(new Dimension(140, 36));
+        darkBtn.setFocusPainted(false);
+        // Dark/Light 모드는 ThemeManager가 색을 관리하므로 keepColor 설정 안 함
+        darkBtn.addActionListener(e -> {
+            ThemeManager.isDark = !ThemeManager.isDark;
+            ThemeManager.applyTheme(getContentPane());
+            darkBtn.setText(ThemeManager.isDark ? "Light Mode" : "Dark Mode");
+        });
+        side.add(darkBtn);
+        side.add(Box.createVerticalStrut(15));
         
         JButton logoutBtn = new JButton("Logout");
         logoutBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
         logoutBtn.setBackground(new Color(220, 53, 69));
         logoutBtn.setForeground(Color.WHITE);
+        logoutBtn.setFocusPainted(false);
+        // 이 버튼은 고유 색상을 유지해야 하므로 keepColor 플래그 설정
+        logoutBtn.putClientProperty("keepColor", true);
         logoutBtn.addActionListener(e -> { dispose(); new LoginFrame(service).setVisible(true); });
         
         side.add(logoutBtn);
@@ -115,6 +135,9 @@ public class MainFrame extends JFrame {
         JButton tweetBtn = new JButton("Tweet");
         tweetBtn.setBackground(new Color(29, 161, 242));
         tweetBtn.setForeground(Color.WHITE);
+        tweetBtn.setFocusPainted(false);
+        // 이 버튼도 고유 색상을 유지해야 하므로 keepColor 플래그 설정
+        tweetBtn.putClientProperty("keepColor", true);
         tweetBtn.addActionListener(e -> { new WritePostDialog(this, service, userId).setVisible(true); loadTimeline(); });
         header.add(title, BorderLayout.WEST);
         header.add(tweetBtn, BorderLayout.EAST);
@@ -157,6 +180,8 @@ public class MainFrame extends JFrame {
     private void showHome() {
         ((CardLayout) contentPanel.getLayout()).show(contentPanel, CARD_HOME);
         loadTimeline();
+        // ★ 화면 전환 후 현재 모드에 맞게 다시 테마 적용
+        ThemeManager.applyTheme(contentPanel);
     }
 
     private void showExplore() {
@@ -211,6 +236,9 @@ public class MainFrame extends JFrame {
             resultPanel.repaint();
         });
         btnSearch.doClick();
+
+        // ★ 화면 전환 후 테마 재적용
+        ThemeManager.applyTheme(contentPanel);
     }
 
     private void showFollowers() {
@@ -238,6 +266,9 @@ public class MainFrame extends JFrame {
         followersPanel.add(new JScrollPane(list), BorderLayout.CENTER);
         followersPanel.revalidate();
         followersPanel.repaint();
+
+        // ★ 화면 전환 후 테마 재적용
+        ThemeManager.applyTheme(contentPanel);
     }
 
     // ★ [New] 내가 팔로우하는 사람 목록 보기
@@ -269,6 +300,9 @@ public class MainFrame extends JFrame {
         followingPanel.add(new JScrollPane(list), BorderLayout.CENTER);
         followingPanel.revalidate();
         followingPanel.repaint();
+
+        // ★ 화면 전환 후 테마 재적용
+        ThemeManager.applyTheme(contentPanel);
     }
 
     private void showUserProfile(String targetId) {
@@ -305,6 +339,9 @@ public class MainFrame extends JFrame {
         profilePanel.add(new JScrollPane(listPanel), BorderLayout.CENTER);
         profilePanel.revalidate();
         profilePanel.repaint();
+
+        // ★ 화면 전환 후 테마 재적용
+        ThemeManager.applyTheme(contentPanel);
     }
 
     private void loadTimeline() {
@@ -322,5 +359,8 @@ public class MainFrame extends JFrame {
         PostDetailPanel detail = new PostDetailPanel(service, userId, post, () -> showHome());
         postDetailWrapper.add(detail, BorderLayout.CENTER);
         ((CardLayout) contentPanel.getLayout()).show(contentPanel, CARD_DETAIL);
+
+        // ★ 상세 화면 전환 후 테마 재적용
+        ThemeManager.applyTheme(contentPanel);
     }
 }

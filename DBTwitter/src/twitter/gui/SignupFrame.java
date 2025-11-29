@@ -123,5 +123,7 @@ public class SignupFrame extends JFrame {
                 JOptionPane.showMessageDialog(this, "User already exists.");
             }
         });
+        
+        ThemeManager.applyTheme(getContentPane());
     }
 }

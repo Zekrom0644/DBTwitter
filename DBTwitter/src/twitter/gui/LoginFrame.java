@@ -66,6 +66,7 @@ public class LoginFrame extends JFrame {
         loginBtn.setFocusPainted(false);
         loginBtn.setBackground(new Color(29, 161, 242));
         loginBtn.setForeground(Color.WHITE);
+        loginBtn.setFocusPainted(false);
         loginBtn.putClientProperty("JButton.buttonType", "roundRect");
 
         base.add(loginBtn);
@@ -103,5 +104,49 @@ public class LoginFrame extends JFrame {
                 JOptionPane.showMessageDialog(this, "Login failed");
             }
         });
+        loginBtn.putClientProperty("keepColor", true);
+        ThemeManager.applyTheme(getContentPane());
+        
+        // =========================
+        // Dark Mode 버튼 추가
+        // =========================
+        JButton darkBtn = new JButton(ThemeManager.isDark ? "Light" : "Dark");
+        darkBtn.setFocusPainted(false);
+        darkBtn.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        darkBtn.setMargin(new Insets(2, 8, 2, 8));
+        darkBtn.setBackground(new Color(240,240,240));
+        darkBtn.setForeground(Color.BLACK);
+        darkBtn.putClientProperty("keepColor", true);
+        
+        if (ThemeManager.isDark) {
+            darkBtn.setBackground(Color.BLACK);
+            darkBtn.setForeground(Color.WHITE);
+        } else {
+            darkBtn.setBackground(Color.WHITE);
+            darkBtn.setForeground(Color.BLACK);
+        }
+
+        
+        darkBtn.addActionListener(e -> {
+            ThemeManager.isDark = !ThemeManager.isDark;
+            ThemeManager.applyTheme(getContentPane());
+            darkBtn.setText(ThemeManager.isDark ? "Light" : "Dark");
+        });
+
+        // ------------------------------
+        // Wrapper Layout
+        // ------------------------------
+        JPanel wrapper = new JPanel(new BorderLayout());
+
+        // 상단 바 생성 (Dark 버튼을 왼쪽 위에만 배치)
+        JPanel topBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
+        topBar.setBackground(Color.WHITE);
+        topBar.add(darkBtn);
+
+        // 구역 배치
+        wrapper.add(topBar, BorderLayout.NORTH);   // 왼쪽 상단 구석
+        wrapper.add(base, BorderLayout.CENTER);
+
+        add(wrapper);
     }
 }

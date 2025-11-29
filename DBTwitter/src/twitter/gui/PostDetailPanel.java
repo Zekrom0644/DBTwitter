@@ -8,13 +8,17 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.List;
 
+
+
 public class PostDetailPanel extends JPanel {
 
     private final TwitterService service;
     private final String userId;
     private final Post post;
     private final Runnable goBack; // 뒤로가기 (타임라인 새로고침 역할도 겸함)
+    private JPanel commentsContainer;   // ★ 댓글 컨테이너 추가
 
+    
     public PostDetailPanel(TwitterService service, String userId, Post post, Runnable goBack) {
         this.service = service;
         this.userId = userId;
@@ -155,21 +159,14 @@ public class PostDetailPanel extends JPanel {
         lblComments.setBorder(BorderFactory.createEmptyBorder(0, 5, 10, 0));
         main.add(lblComments);
 
-        List<Comment> comments = service.getComments(post.getPostId());
-        
-        if (comments.isEmpty()) {
-            JLabel noCmt = new JLabel("No comments yet.");
-            noCmt.setFont(new Font("Segoe UI", Font.ITALIC, 14));
-            noCmt.setForeground(Color.GRAY);
-            noCmt.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-            main.add(noCmt);
-        } else {
-            for (Comment c : comments) {
-                // 수정된 부분: CommentCardPanel 사용 (좋아요 기능 포함)
-                main.add(new CommentCardPanel(service, userId, c));
-                main.add(Box.createVerticalStrut(10));
-            }
-        }
+        // ★ 댓글들이 들어갈 영역을 따로 분리
+        commentsContainer = new JPanel();
+        commentsContainer.setLayout(new BoxLayout(commentsContainer, BoxLayout.Y_AXIS));
+        commentsContainer.setOpaque(false);
+        main.add(commentsContainer);
+
+        // 기존 댓글 로드
+        loadComments();
 
         main.add(Box.createVerticalStrut(15));
 
@@ -180,40 +177,93 @@ public class PostDetailPanel extends JPanel {
         write.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 220, 220)));
         write.setBackground(Color.WHITE);
 
-        JTextArea input = new JTextArea();
+        // ★ 핵심: JTextArea 폭 확장 방지 → reply 버튼이 밀리지 않음
+        JTextArea input = new JTextArea() {
+            @Override
+            public Dimension getPreferredSize() {
+                Dimension d = super.getPreferredSize();
+                d.width = 0;    // ★ 폭 무제한 증식 방지
+                return d;
+            }
+        };
         input.setLineWrap(true);
         input.setWrapStyleWord(true);
         input.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         input.setRows(3);
 
         JScrollPane inputScroll = new JScrollPane(input);
-        // inputScroll.setBorder(BorderFactory.createEmptyBorder(5,5,5,5));
+        inputScroll.setBorder(BorderFactory.createEmptyBorder());
+        inputScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
         JButton replyBtn = new JButton("Reply");
-        replyBtn.setPreferredSize(new Dimension(80, 60)); // 버튼 높이 맞춤
-        replyBtn.setBackground(new Color(29, 161, 242));
+        replyBtn.setBackground(new Color(29,161,242));
         replyBtn.setForeground(Color.WHITE);
         replyBtn.setFocusPainted(false);
-        
+        replyBtn.putClientProperty("keepColor", true);
+
         replyBtn.addActionListener(e -> {
             String txt = input.getText().trim();
             if (!txt.isEmpty()) {
                 service.addComment(post.getPostId(), userId, txt);
-                // 댓글 작성 후 타임라인으로 돌아가거나, 현재 화면을 갱신해야 함
-                // 여기서는 간단히 goBack(타임라인 복귀)으로 처리
-                goBack.run(); 
+
+                // ★ 댓글 리스트만 갱신
+                loadComments();
+
+                // ★ 입력창 비우기
+                input.setText("");
+
+                // ★ 스크롤 맨 아래로 자동 이동
+                SwingUtilities.invokeLater(() -> {
+                    JScrollPane scrollPane = (JScrollPane) SwingUtilities.getAncestorOfClass(
+                            JScrollPane.class, commentsContainer);
+                    if (scrollPane != null) {
+                        scrollPane.getVerticalScrollBar().setValue(
+                                scrollPane.getVerticalScrollBar().getMaximum());
+                    }
+                });
             }
         });
+        
+        
 
         write.add(inputScroll, BorderLayout.CENTER);
         write.add(replyBtn, BorderLayout.EAST);
 
         main.add(write);
 
+        // 전체 스크롤
         JScrollPane scroll = new JScrollPane(main);
         scroll.setBorder(null);
         scroll.getVerticalScrollBar().setUnitIncrement(16);
-
+        
+         // ★ 추가: 폭이 부족할 때 가로 스크롤 자동 생성
+        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        
         return scroll;
+      
+
+    }
+    
+    // ★ 댓글 로딩 메서드
+    private void loadComments() {
+        commentsContainer.removeAll();
+
+        List<Comment> comments = service.getComments(post.getPostId());
+
+        if (comments.isEmpty()) {
+            JLabel noCmt = new JLabel("No comments yet.");
+            noCmt.setFont(new Font("Segoe UI", Font.ITALIC, 14));
+            noCmt.setForeground(Color.GRAY);
+            noCmt.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+            commentsContainer.add(noCmt);
+        } else {
+            for (Comment c : comments) {
+                commentsContainer.add(new CommentCardPanel(service, userId, c));
+                commentsContainer.add(Box.createVerticalStrut(10));
+            }
+        }
+
+        commentsContainer.revalidate();
+        commentsContainer.repaint();
     }
 }

@@ -66,7 +66,7 @@ public class TweetCardPanel extends JPanel {
 
         btnLike.setFocusPainted(false);
         btnDislike.setFocusPainted(false);
-
+        
         btnLike.addActionListener(e -> {
             boolean isAdded = service.toggleLike(post.getPostId(), currentUserId);
             post.setNumLikes(post.getNumLikes() + (isAdded ? 1 : -1));

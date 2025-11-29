@@ -39,6 +39,7 @@ public class CommentCardPanel extends JPanel {
         likeBtn.setBorderPainted(false);
         likeBtn.setContentAreaFilled(false);
         likeBtn.setFocusPainted(false);
+        likeBtn.putClientProperty("keepColor", true);
         
         likeBtn.addActionListener(e -> {
             boolean increased = service.toggleCommentLike(c.getCommentId(), currentUserId);
