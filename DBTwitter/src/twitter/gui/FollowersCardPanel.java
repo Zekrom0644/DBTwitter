@@ -56,6 +56,8 @@ public class FollowersCardPanel extends JPanel {
         JButton btn = new JButton();
         btn.setFocusPainted(false);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btn.putClientProperty("keepColor", true);
+        btn.setOpaque(true);
         
         if (currentUserId.equals(targetUserId)) {
             btn.setVisible(false);
@@ -101,4 +103,5 @@ public class FollowersCardPanel extends JPanel {
             btn.setForeground(Color.WHITE);
         }
     }
+
 }
