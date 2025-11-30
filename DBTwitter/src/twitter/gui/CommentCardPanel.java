@@ -10,25 +10,29 @@ public class CommentCardPanel extends JPanel {
 
     public CommentCardPanel(TwitterService service, String currentUserId, Comment c) {
         setLayout(new BorderLayout());
-        setOpaque(true); // ★ 테마가 제대로 적용되도록 true 유지
+
+        // ★ 댓글 카드 전체 배경을 테마에 맞게 설정
+        setBackground(ThemeManager.isDark ? new Color(34,34,34) : Color.WHITE);
+        setOpaque(true);
+
         setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(230,236,240)));
 
         // 상단: 작성자 + 내용
         JLabel user = new JLabel("@" + c.getWriterId());
         user.setFont(new Font("Segoe UI", Font.BOLD, 13));
 
-        // ★ HTML 배경색을 테마에 맞게 강제 적용
-        String bg = ThemeManager.isDark ? "#141414" : "#FFFFFF";
-        JLabel content = new JLabel(
-                "<html><div style='background-color:" + bg + ";'>" 
-                + c.getContent() + 
-                "</div></html>"
-        );
+        // ★ 테마에 따라 글씨색 변경
+        user.setForeground(ThemeManager.isDark ? Color.WHITE : Color.BLACK);
+
+        JLabel content = new JLabel("<html>" + c.getContent() + "</html>");
         content.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         content.setOpaque(false);
 
+        // ★ 테마에 따라 글씨색 변경 (여기가 핵심!)
+        content.setForeground(ThemeManager.isDark ? Color.WHITE : Color.BLACK);
+
         JPanel textPanel = new JPanel();
-        textPanel.setOpaque(true); // ★ panel은 테마색을 따라가야 함
+        textPanel.setOpaque(false);
         textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
         textPanel.setBorder(BorderFactory.createEmptyBorder(10,10,5,10));
         textPanel.add(user);
@@ -39,7 +43,7 @@ public class CommentCardPanel extends JPanel {
 
         // 하단: 좋아요 버튼
         JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        bottom.setOpaque(true); // ★ 테마 적용
+        bottom.setOpaque(false);
 
         JButton likeBtn = new JButton("♡ " + c.getNumLikes());
         likeBtn.setFont(new Font("Segoe UI", Font.PLAIN, 11));
@@ -47,6 +51,9 @@ public class CommentCardPanel extends JPanel {
         likeBtn.setContentAreaFilled(false);
         likeBtn.setFocusPainted(false);
         likeBtn.putClientProperty("keepColor", true);
+
+        // ★ 다크모드에서도 좋아요 글자색은 고정 유지
+        likeBtn.setForeground(ThemeManager.isDark ? Color.WHITE : Color.BLACK);
 
         likeBtn.addActionListener(e -> {
             boolean increased = service.toggleCommentLike(c.getCommentId(), currentUserId);
