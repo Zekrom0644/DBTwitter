@@ -10,7 +10,8 @@ public class CommentCardPanel extends JPanel {
 
     public CommentCardPanel(TwitterService service, String currentUserId, Comment c) {
         setLayout(new BorderLayout());
-        setBackground(Color.WHITE);
+        setOpaque(true);   // ★ ThemeManager가 다크/라이트 색을 적용할 수 있음
+        // setBackground(Color.WHITE);  // ★ 삭제: 다크모드에서 배경이 하얀색으로 고정되는 문제 원인
         setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(230,236,240)));
 
         // 상단: 작성자 + 내용
@@ -21,7 +22,7 @@ public class CommentCardPanel extends JPanel {
         content.setFont(new Font("Segoe UI", Font.PLAIN, 14));
 
         JPanel textPanel = new JPanel();
-        textPanel.setOpaque(false);
+        textPanel.setOpaque(true);   // ★ 테마 적용을 위해 true로 변경
         textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
         textPanel.setBorder(BorderFactory.createEmptyBorder(10,10,5,10));
         textPanel.add(user);
@@ -32,7 +33,7 @@ public class CommentCardPanel extends JPanel {
 
         // 하단: 좋아요 버튼
         JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        bottom.setOpaque(false);
+        bottom.setOpaque(true);   // ★ 테마 적용을 위해 true로 변경
         
         JButton likeBtn = new JButton("♡ " + c.getNumLikes());
         likeBtn.setFont(new Font("Segoe UI", Font.PLAIN, 11));
