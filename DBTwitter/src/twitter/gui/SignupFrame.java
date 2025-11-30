@@ -74,7 +74,9 @@ public class SignupFrame extends JFrame {
         signupBtn.setForeground(Color.WHITE);
         signupBtn.setFocusPainted(false);
         signupBtn.putClientProperty("JButton.buttonType", "roundRect");
-
+        signupBtn.putClientProperty("keepColor", true);
+        signupBtn.setOpaque(true);
+        
         base.add(signupBtn);
         base.add(Box.createVerticalStrut(25));
 
@@ -127,3 +129,4 @@ public class SignupFrame extends JFrame {
         ThemeManager.applyTheme(getContentPane());
     }
 }
+
